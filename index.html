@@ -1,19 +1,19 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8">
   <title>Organizador de Resultados Laboratoriais</title>
   <style>
-    body { font-family: Arial, sans-serif; padding: 20px; background: #f5f5f5; min-height: 100vh; margin: 0; }
-    textarea { width: 100%; height: 150px; font-size: 16px; }
-    pre { background: #fff; padding: 10px; border: 1px solid #ccc; white-space: pre-wrap; height: 120px; overflow-y: auto; font-size: 16px; }
-    button { margin-top: 10px; padding: 10px 20px; font-size: 16px; margin-right: 10px; cursor: pointer; }
-    .footer-credit { position: fixed; bottom: 5px; right: 10px; font-size: 11px; color: #888; font-style: italic; opacity: 0.6; }
+    body { font-family: Arial, sans-serif; padding: 20px; background: #f5f5f5; margin: 0; }
+    textarea { width: 100%; height: 200px; font-size: 16px; margin-bottom: 10px; }
+    button { padding: 10px 20px; font-size: 16px; cursor: pointer; margin-right: 10px; }
+    pre { background: #fff; padding: 10px; border: 1px solid #ccc; min-height: 50px; font-size: 16px; white-space: pre-wrap; }
+    .footer-credit { font-size: 11px; color: #888; margin-top: 20px; font-style: italic; }
   </style>
 </head>
 <body>
   <h2>Organizador de Resultados Laboratoriais</h2>
-  <textarea id="entrada" placeholder="Cole os resultados aqui..."></textarea><br />
+  <textarea id="entrada" placeholder="Cole aqui seus resultados de exames..."></textarea><br>
   <button onclick="processar()">Organizar</button>
   <button onclick="copiar()">Copiar Resultado</button>
   <h3>Resultado Formatado:</h3>
@@ -25,7 +25,7 @@
       'HB': ['hb','hemoglobina'],
       'HCT': ['hct','hematocrito','hematócrito'],
       'LEUCO': ['leuco','leucocitos','leucócitos'],
-      'PLT': ['plt','plaquetas','plq','PLQ'],
+      'PLT': ['plt','plaquetas','plq'],
       'INR': ['inr','rni'],
       'TTPA': ['ttpa','tempo tromboplastina parcial ativada'],
       'TAP': ['tap','atividade de protrombina'],
@@ -42,106 +42,62 @@
       'T4': ['t4','tiroxina'],
       'T3': ['t3','tri-iodotironina']
     };
+    const ordem = ['HB','HCT','LEUCO','PLT','INR','TTPA','TAP','RR','U','CR','NA','K','PCR','GLI','AST','ALT','TSH','T4','T3'];
 
-    function removerAcentos(t) {
-      return t.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    function removerAcentos(texto){
+      return texto.normalize('NFD').replace(/\p{M}/gu,'');
     }
-    function normalizar(chave) {
-      const limpa = removerAcentos(chave.toLowerCase()).replace(/[^a-z0-9]/g,'');
-      for (let sigla in sinonimos) {
-        for (const s of sinonimos[sigla]) {
-          if (removerAcentos(s.toLowerCase()).replace(/[^a-z0-9]/g,'') === limpa)
-            return sigla;
+    function normalizarNome(nome){
+      const chave = removerAcentos(nome.toLowerCase()).replace(/[^a-z0-9]/g,'');
+      for(const sig in sinonimos){
+        for(const variante of sinonimos[sig]){
+          if(removerAcentos(variante.toLowerCase()).replace(/[^a-z0-9]/g,'')===chave) return sig;
         }
       }
       return null;
     }
-    function removerDatasIntervalos(t) {
-      return t.replace(/\b\d{1,2}\/\d{1,2}(\/\d{2,4})?\b/g, ' ');
-    }
-    function extrairValor(t) {
-      if (!t || t.includes('/')) return null;
-      const m = t.match(/^[\d.,]+%?$/);
-      return m ? m[0].replace(',','.') : null;
-    }
-    function separarNumerosLetras(t) {
-      return t.replace(/([0-9.,])([a-zA-Z])/g,'$1 $2')
-              .replace(/([a-zA-Z])([0-9.,])/g,'$1 $2');
-    }
 
-    function processar() {
-      let entradaRaw = document.getElementById('entrada').value;
-      entradaRaw = removerDatasIntervalos(entradaRaw);
-      // remove só os ranges ": X A Y ..." sem apagar valores antes da sigla
-      entradaRaw = entradaRaw.replace(/:\s*[\d.,%]+\s*[Aa]\s*[\d.,%]+[^\n]*/g, '');
-
-      // separa tudo em tokens
-      const txt = separarNumerosLetras(entradaRaw).replace(/\n/g,' ').trim();
-      const palavras = txt.split(/\s+/);
-
-      let mapa = {};
-      // extrai compostos específicos direto pelo regex
-      const compostos = [
-        { nome:'TTPA', regex:/Tempo Tromboplastina Parcial Ativada[:\s]*([\d.,%]+)/i },
-        { nome:'TAP',  regex:/Atividade de Protrombina[:\s]*([\d.,%]+)/i },
-        { nome:'RR',   regex:/(R[áa]tio|Rela[çc][aã]o Paciente\/Normal)[:\s]*([\d.,%]+)/i },
-        { nome:'PCR',  regex:/Prote[ií]na C Reativa[:\s]*([\d.,%]+)/i },
-        { nome:'GLI',  regex:/Glicemia(?: em jejum)?[:\s]*([\d.,%]+)/i }
-      ];
-      compostos.forEach(c => {
-        const m = entradaRaw.match(c.regex);
-        if (m) mapa[c.nome] = (m[2]||m[1]).replace(',','.');
-      });
-
-      for (let i = 0; i < palavras.length; i++) {
-        const w = palavras[i];
-        const chave = removerAcentos(w.toLowerCase()).replace(/[^a-z0-9]/g,'');
-        let sigla = normalizar(chave);
-
-        if (!sigla) {
-          // captura casos tipo "hb12.3"
-          const m = w.match(/^([a-zA-Z]+)([\d.,%]+)$/);
-          if (m) {
-            const s = normalizar(removerAcentos(m[1].toLowerCase()).replace(/[^a-z0-9]/g,''));
-            if (s && !mapa[s]) mapa[s] = m[2].replace(',','.');
-          }
-          continue;
-        }
-
-        if (!mapa[sigla]) {
-          // primeiro procura pra trás (skip unidades)
-          let valor = null;
-          for (let j = i-1; j >= 0; j--) {
-            const v = extrairValor(palavras[j]);
-            if (v) { valor = v; break; }
-          }
-          // se não achar antes, procura pra frente
-          if (!valor) {
-            for (let j = i+1; j < palavras.length; j++) {
-              const v = extrairValor(palavras[j]);
-              if (v) { valor = v; i = j; break; }
+    function processar(){
+      const texto = document.getElementById('entrada').value;
+      // remove datas
+      let linhas = texto.split(/\r?\n/).map(l=>l.replace(/\b\d{1,2}\/\d{1,2}(?:\/\d{2,4})?\b/g,' '));
+      const resultados = {};
+      // para cada linha, tratar range e extrair
+      linhas.forEach(linha=>{
+        // remove ranges de referência : X A Y
+        const clean = linha.replace(/:\s*[\d.,%]+\s*[Aa]\s*[\d.,%]+.*$/,'');
+        // para cada exame
+        for(const sig of ordem){
+          for(const varnome of sinonimos[sig]){
+            const reNome = new RegExp('\\b'+varnome+'\\b','i');
+            if(reNome.test(clean)){
+              // separa antes/depois
+              const parts = clean.split(reNome);
+              const pre = parts[0];
+              const post = parts[1]||'';
+              // match números
+              const numsPre = pre.match(/[\d.,]+%?/g) || [];
+              const numsPost = post.match(/[\d.,]+%?/g) || [];
+              let val = numsPre.length? numsPre.pop() : (numsPost.length? numsPost[0] : null);
+              if(val) resultados[sig] = val.replace(',', '.');
+              break;
             }
           }
-          if (valor) mapa[sigla] = valor;
         }
-      }
-
-      const ordem = ['HB','HCT','LEUCO','PLT','INR','TTPA','TAP','RR','U','CR','NA','K','PCR','GLI','AST','ALT','TSH','T4','T3'];
-      const resultado = ordem
-        .filter(s => mapa[s])
-        .map(s => `${s} ${mapa[s]}`)
-        .join(' ');
-
-      document.getElementById('saida').textContent = resultado || 'Nenhum valor reconhecido.';
+      });
+      // montar saída
+      const out = ordem.filter(s=>resultados[s]).map(s=>s+' '+resultados[s]).join(' ');
+      document.getElementById('saida').textContent = out||'Nenhum valor reconhecido.';
     }
 
-    function copiar() {
-      navigator.clipboard.writeText(document.getElementById('saida').textContent)
-        .then(_=>alert('Resultado copiado!'));
+    function copiar(){
+      const txt = document.getElementById('saida').textContent;
+      navigator.clipboard.writeText(txt).then(()=>alert('Copiado!'));
     }
   </script>
 </body>
 </html>
+
 
 
 
