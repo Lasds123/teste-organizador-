@@ -60,15 +60,15 @@
       'HCT': ['hct', 'hematocrito', 'hematócrito'],
       'LEUCO': ['leuco', 'leucocitos', 'leucócitos'],
       'PLT': ['plt', 'plaquetas', 'plq', 'PLQ'],
-      'INR': ['inr', 'RNI'],
-      'TTPA': ['ttpa', 'Tempo Tromboplastina Parcial Ativada'],
-      'TAP': ['tap', 'Atividade de Protrombina'],
-      'RR': ['rr', 'ratio', 'rátio', 'Relação Paciente/Normal'],
+      'INR': ['inr', 'rni'],
+      'TTPA': ['ttpa', 'tempo tromboplastina parcial ativada'],
+      'TAP': ['tap', 'atividade de protrombina'],
+      'RR': ['rr', 'ratio', 'rátio', 'relação paciente/normal'],
       'U': ['ureia', 'urea', 'u'],
       'CR': ['creatinina', 'cr'],
       'NA': ['na', 'sodio', 'sódio'],
       'K': ['k', 'potassio', 'potássio'],
-      'PCR': ['pcr', 'Proteina C Reativa', 'Proteína C Reativa'],
+      'PCR': ['pcr', 'proteina c reativa', 'proteína c reativa'],
       'GLI': ['glicose', 'glucose', 'gli', 'glicemia', 'glicemia em jejum'],
       'AST': ['tgo', 'ast'],
       'ALT': ['tgp', 'alt'],
@@ -124,7 +124,12 @@
       // Remove datas e intervalos ANTES de processar
       entradaRaw = removerDatasIntervalos(entradaRaw);
 
-      let entrada = entradaRaw;
+      // Remove tudo depois do ":" (inclusive)
+      // Pra ignorar os intervalos depois dos resultados
+      entradaRaw = entradaRaw.replace(/:.*/g, '');
+
+      let entrada = separarNumerosLetras(entradaRaw);
+      const palavrasRaw = entrada.replace(/\n/g, ' ').trim().split(/\s+/);
 
       let mapa = {};
 
@@ -140,20 +145,20 @@
         const match = entradaRaw.match(comp.regex);
         if (match) {
           mapa[comp.nome] = match[2] || match[1];
-          entrada = entrada.replace(comp.regex, '');
+          // Remove do texto para não interferir depois
+          entradaRaw = entradaRaw.replace(comp.regex, '');
         }
       });
 
-      entrada = separarNumerosLetras(entrada);
-      const palavrasRaw = entrada.replace(/\n/g, ' ').trim().split(/\s+/);
-
       for (let i = 0; i < palavrasRaw.length; i++) {
-        let palavraLimpa = removerAcentos(palavrasRaw[i].toLowerCase()).replace(/[^a-z0-9]/g, '');
+        let palavra = palavrasRaw[i];
+        let palavraLimpa = removerAcentos(palavra.toLowerCase()).replace(/[^a-z0-9]/g, '');
         let sigla = normalizar(palavraLimpa);
 
         if (!sigla) {
-          const regex = /^([a-zA-Z]+)[:\-]?([\d.,%]+)/;
-          const res = palavrasRaw[i].match(regex);
+          // Verifica se token tem formato sigla+valor junto tipo "hb12.3"
+          const regex = /^([a-zA-Z]+)([\d.,%]+)$/;
+          const res = palavra.match(regex);
           if (res) {
             sigla = normalizar(removerAcentos(res[1].toLowerCase()).replace(/[^a-z0-9]/g, ''));
             if (sigla && !mapa[sigla]) {
@@ -165,20 +170,16 @@
         }
 
         if (!mapa[sigla]) {
-          // Tenta valor na palavra anterior (prioridade para valor antes da sigla)
+          // tenta pegar valor antes da sigla
           let valor = null;
           if (i > 0) {
             valor = extrairValor(palavrasRaw[i - 1]);
           }
-
-          // Se não achar valor antes, tenta depois (funcionalidade original)
+          // se não achar, tenta depois
           if (!valor) {
             valor = extrairValor(palavrasRaw[i + 1]);
-            if (valor) {
-              i++; // pula o valor depois da sigla para evitar repetir
-            }
+            if (valor) i++; // pula para não repetir valor
           }
-
           if (valor) {
             mapa[sigla] = valor;
           }
@@ -204,9 +205,8 @@
     }
   </script>
 
-  <div class="footer-credit">by chatGPT e Leo.SS</div>
-</body>
-</html>
+ 
+
 
 
 
