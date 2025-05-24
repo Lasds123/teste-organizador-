@@ -61,14 +61,14 @@
       'LEUCO': ['leuco', 'leucocitos', 'leucócitos'],
       'PLT': ['plt', 'plaquetas', 'plq', 'PLQ'],
       'INR': ['inr', 'RNI'],
-      'TTPA': ['ttpa', 'Tempo Tromboplastina Parcial Ativada'],
-      'TAP': ['tap', 'Atividade de Protrombina'],
-      'RR': ['rr', 'ratio', 'rátio', 'Relação Paciente/Normal'],
+      'TTPA': ['ttpa', 'tempo tromboplastina parcial ativada'],
+      'TAP': ['tap', 'atividade de protrombina'],
+      'RR': ['rr', 'ratio', 'rátio', 'relação paciente/normal'],
       'U': ['ureia', 'urea', 'u'],
       'CR': ['creatinina', 'cr'],
       'NA': ['na', 'sodio', 'sódio'],
       'K': ['k', 'potassio', 'potássio'],
-      'PCR': ['pcr', 'Proteina C Reativa', 'Proteína C Reativa'],
+      'PCR': ['pcr', 'proteina c reativa', 'proteína c reativa'],
       'GLI': ['glicose', 'glucose', 'gli', 'glicemia', 'glicemia em jejum'],
       'AST': ['tgo', 'ast'],
       'ALT': ['tgp', 'alt'],
@@ -98,69 +98,58 @@
       return texto.replace(/\b\d{1,2}\/\d{1,2}(\/\d{2,4})?\b/g, ' ');
     }
 
-    function extrairValor(texto) {
-      if (!texto) return null;
-      if (texto.includes('/')) return null;
-      const match = texto.match(/^[\d.,]+%?$/);
-      if (match) {
-        return match[0].replace(",", ".");
-      }
+    function extrairValor(token) {
+      const match = token.match(/^([\d.,]+%?)$/);
+      if (match) return match[1].replace(",", ".");
       return null;
     }
 
     function separarNumerosLetras(texto) {
-      return texto.replace(/([0-9.,])([a-zA-Z])/g, '$1 $2')
-                  .replace(/([a-zA-Z])([0-9.,])/g, '$1 $2');
+      return texto.replace(/([0-9.,])([a-zA-Z])/g, '$1 $2').replace(/([a-zA-Z])([0-9.,])/g, '$1 $2');
     }
 
     function processar() {
-      let entradaRaw = document.getElementById('entrada').value;
-      entradaRaw = removerDatasIntervalos(entradaRaw);
-      let entrada = separarNumerosLetras(entradaRaw);
+      let entrada = document.getElementById('entrada').value;
+      entrada = removerDatasIntervalos(entrada);
+      entrada = separarNumerosLetras(entrada);
+      const tokens = entrada.split(/\s+/).filter(Boolean);
+
       let mapa = {};
 
-      const palavras = entrada.replace(/\n/g, ' ').trim().split(/\s+/);
+      for (let i = 0; i < tokens.length; i++) {
+        let token = tokens[i];
+        let sigla = normalizar(token);
+        let valorAntes = i > 0 ? extrairValor(tokens[i - 1]) : null;
+        let valorDepois = i < tokens.length - 1 ? extrairValor(tokens[i + 1]) : null;
 
-      for (let i = 0; i < palavras.length; i++) {
-        let valor = extrairValor(palavras[i]);
-        if (valor && i + 1 < palavras.length) {
-          let possivelNome = palavras.slice(i + 1, i + 4).join(' '); // pega até 3 palavras
-          let nomeDetectado = null;
-
-          for (let j = 0; j < 3; j++) {
-            let teste = palavras.slice(i + 1, i + j + 2).join(' ');
-            let sigla = normalizar(teste);
-            if (sigla) {
-              nomeDetectado = sigla;
-              break;
-            }
-          }
-
-          if (nomeDetectado && !mapa[nomeDetectado]) {
-            mapa[nomeDetectado] = valor;
-            i += 1; // pula para o próximo após o nome
-            continue;
+        if (sigla && !mapa[sigla]) {
+          if (valorDepois) {
+            mapa[sigla] = valorDepois;
+            i++; 
+          } else if (valorAntes) {
+            mapa[sigla] = valorAntes;
           }
         }
 
-        let palavraLimpa = removerAcentos(palavras[i].toLowerCase()).replace(/[^a-z0-9]/g, '');
-        let sigla = normalizar(palavraLimpa);
-
-        if (sigla && !mapa[sigla]) {
-          let proxValor = extrairValor(palavras[i + 1]);
-          if (proxValor) {
-            mapa[sigla] = proxValor;
-            i++;
+        // Captura formato: "Nome: valor"
+        let regexNomeValor = /^([a-zA-ZçÇãõéêáóúíâôê]+)[:\-]?$/;
+        let res = token.match(regexNomeValor);
+        if (res) {
+          let nome = res[1];
+          let sigla = normalizar(nome);
+          if (sigla && !mapa[sigla] && i < tokens.length - 1) {
+            let prox = extrairValor(tokens[i + 1]);
+            if (prox) {
+              mapa[sigla] = prox;
+              i++;
+            }
           }
         }
       }
 
-      const ordem = ['HB', 'HCT', 'LEUCO', 'PLT', 'INR', 'TTPA', 'TAP', 'RR',
-                     'U', 'CR', 'NA', 'K', 'PCR', 'GLI', 'AST', 'ALT', 'TSH', 'T4', 'T3'];
+      const ordem = ['HB', 'HCT', 'LEUCO', 'PLT', 'INR', 'TTPA', 'TAP', 'RR', 'U', 'CR', 'NA', 'K', 'PCR', 'GLI', 'AST', 'ALT', 'TSH', 'T4', 'T3'];
 
-      let resultado = ordem.map(sigla => mapa[sigla] ? `${sigla} ${mapa[sigla]}` : null)
-                           .filter(Boolean)
-                           .join(' ');
+      let resultado = ordem.map(sigla => mapa[sigla] ? `${sigla} ${mapa[sigla]}` : null).filter(Boolean).join(' ');
 
       document.getElementById('saida').textContent = resultado || "Nenhum valor reconhecido.";
     }
