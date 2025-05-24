@@ -165,20 +165,22 @@
         }
 
         if (!mapa[sigla]) {
-          // Tenta valor na próxima palavra (comportamento original)
-          let valor = extrairValor(palavrasRaw[i + 1]);
-
-          // Se não tiver valor depois, tenta na palavra anterior (nova funcionalidade)
-          if (!valor && i > 0) {
+          // Tenta valor na palavra anterior (prioridade para valor antes da sigla)
+          let valor = null;
+          if (i > 0) {
             valor = extrairValor(palavrasRaw[i - 1]);
+          }
+
+          // Se não achar valor antes, tenta depois (funcionalidade original)
+          if (!valor) {
+            valor = extrairValor(palavrasRaw[i + 1]);
+            if (valor) {
+              i++; // pula o valor depois da sigla para evitar repetir
+            }
           }
 
           if (valor) {
             mapa[sigla] = valor;
-            // Se o valor estava na palavra seguinte, pula ela
-            if (palavrasRaw[i + 1] && extrairValor(palavrasRaw[i + 1]) === valor) {
-              i++;
-            }
           }
         }
       }
@@ -205,5 +207,6 @@
   <div class="footer-credit">by chatGPT e Leo.SS</div>
 </body>
 </html>
+
 
 
