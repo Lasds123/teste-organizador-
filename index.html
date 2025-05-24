@@ -58,155 +58,11 @@
     const sinonimos = {
       'HB': ['hb', 'hemoglobina'],
       'HCT': ['hct', 'hematocrito', 'hematócrito'],
-      'LEUCO': ['leuco', 'leucocitos', 'leucócitos'],
-      'PLT': ['plt', 'plaquetas', 'plq', 'PLQ'],
-      'INR': ['inr', 'RNI'],
-      'TTPA': ['ttpa', 'tempo tromboplastina parcial ativada'],
-      'TAP': ['tap', 'atividade de protrombina'],
-      'RR': ['rr', 'ratio', 'rátio', 'relação paciente/normal'],
-      'U': ['ureia', 'urea', 'u'],
-      'CR': ['creatinina', 'cr'],
-      'NA': ['na', 'sodio', 'sódio'],
-      'K': ['k', 'potassio', 'potássio'],
-      'PCR': ['pcr', 'proteina c reativa', 'proteína c reativa'],
-      'GLI': ['glicose', 'glucose', 'gli', 'glicemia', 'glicemia em jejum'],
-      'AST': ['tgo', 'ast'],
-      'ALT': ['tgp', 'alt'],
-      'TSH': ['tsh'],
-      'T4': ['t4', 'tiroxina'],
-      'T3': ['t3', 'tri-iodotironina'],
+      'LEUCO': ['leuco', 'leucocitos', 'leucócitos', 'leucócitos'],
       'NEUTRO': ['neutrofilos', 'neutrófilos'],
       'EOS': ['eosinofilos', 'eosinófilos'],
       'BASO': ['basofilos', 'basófilos'],
-      'LINF': ['linfocitos', 'linfócitos']
-    };
-
-    function removerAcentos(texto) {
-      return texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-    }
-
-    function normalizar(chave) {
-      const chaveLimpa = removerAcentos(chave.toLowerCase()).replace(/[^a-z0-9]/g, '');
-      for (let sigla in sinonimos) {
-        for (const s of sinonimos[sigla]) {
-          const sLimpa = removerAcentos(s.toLowerCase()).replace(/[^a-z0-9]/g, '');
-          if (chaveLimpa === sLimpa) {
-            return sigla;
-          }
-        }
-      }
-      return null;
-    }
-
-    function extrairNumeros(texto) {
-      return texto.match(/[\d.,]+/g) || [];
-    }
-
-    function processar() {
-      let entrada = document.getElementById('entrada').value;
-      entrada = entrada.replace(/\b\d{1,2}\/\d{1,2}(\/\d{2,4})?\b/g, ' ');
-      entrada = entrada.replace(/\/mm³/g, ' ');
-      entrada = entrada.replace(/[%]/g, ' %');
-
-      const linhas = entrada.split('\n').map(l => l.trim()).filter(Boolean);
-      let mapa = {};
-
-      for (let linha of linhas) {
-        const numeros = extrairNumeros(linha);
-        const palavras = linha.split(/\s+/);
-
-        for (let i = 0; i < palavras.length; i++) {
-          const sigla = normalizar(palavras[i]);
-          if (sigla && !mapa[sigla]) {
-            let valor = null;
-            // procura número após o nome
-            for (let j = i + 1; j < palavras.length; j++) {
-              if (palavras[j].includes('%')) continue;
-              let num = extrairNumeros(palavras[j])[0];
-              if (num) {
-                valor = num.replace(',', '.');
-                break;
-              }
-            }
-            // se não achou depois, procura antes
-            if (!valor) {
-              for (let j = i - 1; j >= 0; j--) {
-                if (palavras[j].includes('%')) continue;
-                let num = extrairNumeros(palavras[j])[0];
-                if (num) {
-                  valor = num.replace(',', '.');
-                  break;
-                }
-              }
-            }
-            if (valor) {
-              mapa[sigla] = valor;
-            }
-          }
-        }
-      }
-
-      const ordem = ['HB', 'HCT', 'LEUCO', 'NEUTRO', 'EOS', 'BASO', 'LINF', 
-                     'PLT', 'INR', 'TTPA', 'TAP', 'RR', 'U', 'CR', 'NA', 'K', 
-                     'PCR', 'GLI', 'AST', 'ALT', 'TSH', 'T4', 'T3'];
-
-      let resultado = ordem.map(sigla => mapa[sigla] ? `${sigla} ${mapa[sigla]}` : null)
-                           .filter(Boolean)
-                           .join(' ');
-
-      document.getElementById('saida').textContent = resultado || "Nenhum valor reconhecido.";
-    }
-
-    function copiar() {
-      const texto = document.getElementById("saida").textContent;
-      navigator.clipboard.writeText(texto).then(() => {
-        alert("Resultado copiado para a área de transferência!");
-      });
-    }
-  </script>
-
-  <div class="footer-credit">by ChatGPT e Leo.SS</div>
-</body>
-</html>
-      border: 1px solid #ccc;
-      white-space: pre-wrap;
-      height: 120px;
-      overflow-y: auto;
-      font-size: 16px;
-    }
-    button {
-      margin-top: 10px;
-      padding: 10px 20px;
-      font-size: 16px;
-      margin-right: 10px;
-      cursor: pointer;
-    }
-    .footer-credit {
-      position: fixed;
-      bottom: 5px;
-      right: 10px;
-      font-size: 11px;
-      color: #888;
-      font-style: italic;
-      user-select: none;
-      opacity: 0.6;
-      font-family: 'Arial', sans-serif;
-    }
-  </style>
-</head>
-<body>
-  <h2>Organizador de Resultados Laboratoriais</h2>
-  <textarea id="entrada" placeholder="Cole os resultados aqui..."></textarea><br />
-  <button onclick="processar()">Organizar</button>
-  <button onclick="copiar()">Copiar Resultado</button>
-  <h3>Resultado Formatado:</h3>
-  <pre id="saida">Nenhum valor reconhecido.</pre>
-
-  <script>
-    const sinonimos = {
-      'HB': ['hb', 'hemoglobina'],
-      'HCT': ['hct', 'hematocrito', 'hematócrito'],
-      'LEUCO': ['leuco', 'leucocitos', 'leucócitos'],
+      'LINF': ['linfocitos', 'linfócitos'],
       'PLT': ['plt', 'plaquetas', 'plq', 'PLQ'],
       'INR': ['inr', 'RNI'],
       'TTPA': ['ttpa', 'tempo tromboplastina parcial ativada'],
@@ -234,7 +90,7 @@
       for (let sigla in sinonimos) {
         for (const s of sinonimos[sigla]) {
           const sLimpa = removerAcentos(s.toLowerCase()).replace(/[^a-z0-9]/g, '');
-          if (chaveLimpa === sLimpa) {
+          if (chaveLimpa.includes(sLimpa)) {
             return sigla;
           }
         }
@@ -242,62 +98,47 @@
       return null;
     }
 
-    function removerDatasIntervalos(texto) {
-      return texto.replace(/\b\d{1,2}\/\d{1,2}(\/\d{2,4})?\b/g, ' ');
-    }
-
-    function extrairValor(token) {
-      const match = token.match(/^([\d.,]+%?)$/);
-      if (match) return match[1].replace(",", ".");
-      return null;
-    }
-
-    function separarNumerosLetras(texto) {
-      return texto.replace(/([0-9.,])([a-zA-Z])/g, '$1 $2').replace(/([a-zA-Z])([0-9.,])/g, '$1 $2');
+    function extrairNumeros(texto) {
+      return texto.match(/[\d.,]+/g) || [];
     }
 
     function processar() {
       let entrada = document.getElementById('entrada').value;
-      entrada = removerDatasIntervalos(entrada);
-      entrada = separarNumerosLetras(entrada);
-      const tokens = entrada.split(/\s+/).filter(Boolean);
+      entrada = entrada.replace(/\/mm³/g, '');
+      entrada = entrada.replace(/[%]/g, ' %');
 
+      const linhas = entrada.split('\n').map(l => l.trim()).filter(Boolean);
       let mapa = {};
 
-      for (let i = 0; i < tokens.length; i++) {
-        let token = tokens[i];
-        let sigla = normalizar(token);
-        let valorAntes = i > 0 ? extrairValor(tokens[i - 1]) : null;
-        let valorDepois = i < tokens.length - 1 ? extrairValor(tokens[i + 1]) : null;
+      for (let linha of linhas) {
+        const numeros = extrairNumeros(linha);
+        const palavras = linha.split(/\s+/);
 
-        if (sigla && !mapa[sigla]) {
-          if (valorDepois) {
-            mapa[sigla] = valorDepois;
-            i++; 
-          } else if (valorAntes) {
-            mapa[sigla] = valorAntes;
+        let siglaEncontrada = null;
+
+        for (let palavra of palavras) {
+          let sigla = normalizar(palavra);
+          if (sigla) {
+            siglaEncontrada = sigla;
+            break;
           }
         }
 
-        // Captura formato: "Nome: valor"
-        let regexNomeValor = /^([a-zA-ZçÇãõéêáóúíâôê]+)[:\-]?$/;
-        let res = token.match(regexNomeValor);
-        if (res) {
-          let nome = res[1];
-          let sigla = normalizar(nome);
-          if (sigla && !mapa[sigla] && i < tokens.length - 1) {
-            let prox = extrairValor(tokens[i + 1]);
-            if (prox) {
-              mapa[sigla] = prox;
-              i++;
-            }
-          }
+        if (siglaEncontrada && numeros.length > 0) {
+          // Pega o maior número (em geral, o valor do exame, e não o intervalo)
+          let numeroValido = numeros.map(n => parseFloat(n.replace(',', '.')))
+                                    .sort((a, b) => b - a)[0];
+          mapa[siglaEncontrada] = numeroValido;
         }
       }
 
-      const ordem = ['HB', 'HCT', 'LEUCO', 'PLT', 'INR', 'TTPA', 'TAP', 'RR', 'U', 'CR', 'NA', 'K', 'PCR', 'GLI', 'AST', 'ALT', 'TSH', 'T4', 'T3'];
+      const ordem = ['HB', 'HCT', 'LEUCO', 'NEUTRO', 'EOS', 'BASO', 'LINF', 
+                     'PLT', 'INR', 'TTPA', 'TAP', 'RR', 'U', 'CR', 'NA', 'K', 
+                     'PCR', 'GLI', 'AST', 'ALT', 'TSH', 'T4', 'T3'];
 
-      let resultado = ordem.map(sigla => mapa[sigla] ? `${sigla} ${mapa[sigla]}` : null).filter(Boolean).join(' ');
+      let resultado = ordem.map(sigla => mapa[sigla] ? `${sigla} ${mapa[sigla]}` : null)
+                           .filter(Boolean)
+                           .join(' ');
 
       document.getElementById('saida').textContent = resultado || "Nenhum valor reconhecido.";
     }
