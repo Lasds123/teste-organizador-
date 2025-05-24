@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>Organizador de Resultados Laboratoriais</title>
   <style>
     body {
@@ -48,7 +48,7 @@
 </head>
 <body>
   <h2>Organizador de Resultados Laboratoriais</h2>
-  <textarea id="entrada" placeholder="Cole os resultados aqui..."></textarea><br>
+  <textarea id="entrada" placeholder="Cole os resultados aqui..."></textarea><br />
   <button onclick="processar()">Organizar</button>
   <button onclick="copiar()">Copiar Resultado</button>
   <h3>Resultado Formatado:</h3>
@@ -58,21 +58,17 @@
     const sinonimos = {
       'HB': ['hb', 'hemoglobina'],
       'HCT': ['hct', 'hematocrito', 'hematócrito'],
-      'LEUCO': ['leuco', 'leucocitos', 'leucócitos', 'leucócitos'],
-      'NEUTRO': ['neutrofilos', 'neutrófilos'],
-      'EOS': ['eosinofilos', 'eosinófilos'],
-      'BASO': ['basofilos', 'basófilos'],
-      'LINF': ['linfocitos', 'linfócitos'],
+      'LEUCO': ['leuco', 'leucocitos', 'leucócitos'],
       'PLT': ['plt', 'plaquetas', 'plq', 'PLQ'],
       'INR': ['inr', 'RNI'],
-      'TTPA': ['ttpa', 'tempo tromboplastina parcial ativada'],
-      'TAP': ['tap', 'atividade de protrombina'],
-      'RR': ['rr', 'ratio', 'rátio', 'relação paciente/normal'],
+      'TTPA': ['ttpa', 'Tempo Tromboplastina Parcial Ativada'],
+      'TAP': ['tap', 'Atividade de Protrombina'],
+      'RR': ['rr', 'ratio', 'rátio', 'Relação Paciente/Normal'],
       'U': ['ureia', 'urea', 'u'],
       'CR': ['creatinina', 'cr'],
       'NA': ['na', 'sodio', 'sódio'],
       'K': ['k', 'potassio', 'potássio'],
-      'PCR': ['pcr', 'proteina c reativa', 'proteína c reativa'],
+      'PCR': ['pcr', 'Proteina C Reativa', 'Proteína C Reativa'],
       'GLI': ['glicose', 'glucose', 'gli', 'glicemia', 'glicemia em jejum'],
       'AST': ['tgo', 'ast'],
       'ALT': ['tgp', 'alt'],
@@ -90,7 +86,7 @@
       for (let sigla in sinonimos) {
         for (const s of sinonimos[sigla]) {
           const sLimpa = removerAcentos(s.toLowerCase()).replace(/[^a-z0-9]/g, '');
-          if (chaveLimpa.includes(sLimpa)) {
+          if (chaveLimpa === sLimpa) {
             return sigla;
           }
         }
@@ -98,47 +94,102 @@
       return null;
     }
 
-    function extrairNumeros(texto) {
-      return texto.match(/[\d.,]+/g) || [];
+    // Remove datas e intervalos do texto (ex: 21/05/2023, 12/12, 05/23)
+    function removerDatasIntervalos(texto) {
+      return texto.replace(/\b\d{1,2}\/\d{1,2}(\/\d{2,4})?\b/g, ' ');
+    }
+
+    function extrairValor(texto) {
+      if (!texto) return null;
+
+      // Ignorar tokens com barras (datas, intervalos)
+      if (texto.includes('/')) return null;
+
+      // Extrai números (com vírgula ou ponto e opcional %)
+      const match = texto.match(/^[\d.,]+%?$/);
+      if (match) {
+        return match[0].replace(",", ".");
+      }
+      return null;
+    }
+
+    function separarNumerosLetras(texto) {
+      return texto.replace(/([0-9.,])([a-zA-Z])/g, '$1 $2')
+                  .replace(/([a-zA-Z])([0-9.,])/g, '$1 $2');
     }
 
     function processar() {
-      let entrada = document.getElementById('entrada').value;
-      entrada = entrada.replace(/\/mm³/g, '');
-      entrada = entrada.replace(/[%]/g, ' %');
+      let entradaRaw = document.getElementById('entrada').value;
 
-      const linhas = entrada.split('\n').map(l => l.trim()).filter(Boolean);
+      // Remove datas e intervalos ANTES de processar
+      entradaRaw = removerDatasIntervalos(entradaRaw);
+
+      let entrada = entradaRaw;
+
       let mapa = {};
 
-      for (let linha of linhas) {
-        const numeros = extrairNumeros(linha);
-        const palavras = linha.split(/\s+/);
+      const compostos = [
+        { nome: 'TTPA', regex: /Tempo Tromboplastina Parcial Ativada[:\s]*([\d.,%]+)/i },
+        { nome: 'TAP', regex: /Atividade de Protrombina[:\s]*([\d.,%]+)/i },
+        { nome: 'RR', regex: /(R[áa]tio|Rela[çc][aã]o Paciente\/Normal)[:\s]*([\d.,%]+)/i },
+        { nome: 'PCR', regex: /Prote[ií]na C Reativa[:\s]*([\d.,%]+)/i },
+        { nome: 'GLI', regex: /Glicemia(?: em jejum)?[:\s]*([\d.,%]+)/i }
+      ];
 
-        let siglaEncontrada = null;
+      compostos.forEach(comp => {
+        const match = entradaRaw.match(comp.regex);
+        if (match) {
+          mapa[comp.nome] = match[2] || match[1];
+          entrada = entrada.replace(comp.regex, '');
+        }
+      });
 
-        for (let palavra of palavras) {
-          let sigla = normalizar(palavra);
-          if (sigla) {
-            siglaEncontrada = sigla;
-            break;
+      entrada = separarNumerosLetras(entrada);
+      const palavrasRaw = entrada.replace(/\n/g, ' ').trim().split(/\s+/);
+
+      for (let i = 0; i < palavrasRaw.length; i++) {
+        let palavraLimpa = removerAcentos(palavrasRaw[i].toLowerCase()).replace(/[^a-z0-9]/g, '');
+        let sigla = normalizar(palavraLimpa);
+
+        if (!sigla) {
+          const regex = /^([a-zA-Z]+)[:\-]?([\d.,%]+)/;
+          const res = palavrasRaw[i].match(regex);
+          if (res) {
+            sigla = normalizar(removerAcentos(res[1].toLowerCase()).replace(/[^a-z0-9]/g, ''));
+            if (sigla && !mapa[sigla]) {
+              let val = res[2].replace(",", ".");
+              mapa[sigla] = val;
+            }
           }
+          continue;
         }
 
-        if (siglaEncontrada && numeros.length > 0) {
-          // Pega o maior número (em geral, o valor do exame, e não o intervalo)
-          let numeroValido = numeros.map(n => parseFloat(n.replace(',', '.')))
-                                    .sort((a, b) => b - a)[0];
-          mapa[siglaEncontrada] = numeroValido;
+        if (!mapa[sigla]) {
+          // Tenta valor na próxima palavra (comportamento original)
+          let valor = extrairValor(palavrasRaw[i + 1]);
+
+          // Se não tiver valor depois, tenta na palavra anterior (nova funcionalidade)
+          if (!valor && i > 0) {
+            valor = extrairValor(palavrasRaw[i - 1]);
+          }
+
+          if (valor) {
+            mapa[sigla] = valor;
+            // Se o valor estava na palavra seguinte, pula ela
+            if (palavrasRaw[i + 1] && extrairValor(palavrasRaw[i + 1]) === valor) {
+              i++;
+            }
+          }
         }
       }
 
-      const ordem = ['HB', 'HCT', 'LEUCO', 'NEUTRO', 'EOS', 'BASO', 'LINF', 
-                     'PLT', 'INR', 'TTPA', 'TAP', 'RR', 'U', 'CR', 'NA', 'K', 
-                     'PCR', 'GLI', 'AST', 'ALT', 'TSH', 'T4', 'T3'];
+      const ordem = ['HB', 'HCT', 'LEUCO', 'PLT', 'INR', 'TTPA', 'TAP', 'RR',
+                     'U', 'CR', 'NA', 'K', 'PCR', 'GLI', 'AST', 'ALT', 'TSH', 'T4', 'T3'];
 
-      let resultado = ordem.map(sigla => mapa[sigla] ? `${sigla} ${mapa[sigla]}` : null)
-                           .filter(Boolean)
-                           .join(' ');
+      let resultado = ordem
+        .map(sigla => mapa[sigla] ? `${sigla} ${mapa[sigla]}` : null)
+        .filter(Boolean)
+        .join(' ');
 
       document.getElementById('saida').textContent = resultado || "Nenhum valor reconhecido.";
     }
@@ -151,7 +202,8 @@
     }
   </script>
 
-  <div class="footer-credit">by ChatGPT e Leo.SS</div>
+  <div class="footer-credit">by chatGPT e Leo.SS</div>
 </body>
 </html>
+
 
