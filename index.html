@@ -72,17 +72,15 @@
     function processar() {
       let entradaRaw = document.getElementById('entrada').value;
       entradaRaw = removerDatasIntervalos(entradaRaw);
-
-      // ───>  remove APENAS os ranges (": 3.9 A 5 ...") de cada linha
+      // remove só os ranges ": X A Y ..." sem apagar valores antes da sigla
       entradaRaw = entradaRaw.replace(/:\s*[\d.,%]+\s*[Aa]\s*[\d.,%]+[^\n]*/g, '');
 
-      // separa número/letra, quebra em tokens
-      let txt = separarNumerosLetras(entradaRaw)
-                  .replace(/\n/g,' ')
-                  .trim();
+      // separa tudo em tokens
+      const txt = separarNumerosLetras(entradaRaw).replace(/\n/g,' ').trim();
       const palavras = txt.split(/\s+/);
 
       let mapa = {};
+      // extrai compostos específicos direto pelo regex
       const compostos = [
         { nome:'TTPA', regex:/Tempo Tromboplastina Parcial Ativada[:\s]*([\d.,%]+)/i },
         { nome:'TAP',  regex:/Atividade de Protrombina[:\s]*([\d.,%]+)/i },
@@ -101,7 +99,7 @@
         let sigla = normalizar(chave);
 
         if (!sigla) {
-          // checa tokens juntos tipo "hb12.3"
+          // captura casos tipo "hb12.3"
           const m = w.match(/^([a-zA-Z]+)([\d.,%]+)$/);
           if (m) {
             const s = normalizar(removerAcentos(m[1].toLowerCase()).replace(/[^a-z0-9]/g,''));
@@ -111,24 +109,30 @@
         }
 
         if (!mapa[sigla]) {
-          // primeiro tenta valor ANTES
-          let val = i>0 ? extrairValor(palavras[i-1]) : null;
-          // se não, depois
-          if (!val) {
-            val = extrairValor(palavras[i+1]);
-            if (val) i++;
+          // primeiro procura pra trás (skip unidades)
+          let valor = null;
+          for (let j = i-1; j >= 0; j--) {
+            const v = extrairValor(palavras[j]);
+            if (v) { valor = v; break; }
           }
-          if (val) mapa[sigla] = val;
+          // se não achar antes, procura pra frente
+          if (!valor) {
+            for (let j = i+1; j < palavras.length; j++) {
+              const v = extrairValor(palavras[j]);
+              if (v) { valor = v; i = j; break; }
+            }
+          }
+          if (valor) mapa[sigla] = valor;
         }
       }
 
       const ordem = ['HB','HCT','LEUCO','PLT','INR','TTPA','TAP','RR','U','CR','NA','K','PCR','GLI','AST','ALT','TSH','T4','T3'];
-      const res = ordem
+      const resultado = ordem
         .filter(s => mapa[s])
         .map(s => `${s} ${mapa[s]}`)
         .join(' ');
 
-      document.getElementById('saida').textContent = res || 'Nenhum valor reconhecido.';
+      document.getElementById('saida').textContent = resultado || 'Nenhum valor reconhecido.';
     }
 
     function copiar() {
