@@ -94,7 +94,6 @@
       return null;
     }
 
-    // Remove datas e intervalos do texto (ex: 21/05/2023, 12/12, 05/23)
     function removerDatasIntervalos(texto) {
       return texto.replace(/\b\d{1,2}\/\d{1,2}(\/\d{2,4})?\b/g, ' ');
     }
@@ -102,10 +101,8 @@
     function extrairValor(texto) {
       if (!texto) return null;
 
-      // Ignorar tokens com barras (datas, intervalos)
       if (texto.includes('/')) return null;
 
-      // Extrai números (com vírgula ou ponto e opcional %)
       const match = texto.match(/^[\d.,]+%?$/);
       if (match) {
         return match[0].replace(",", ".");
@@ -121,11 +118,8 @@
     function processar() {
       let entradaRaw = document.getElementById('entrada').value;
 
-      // Remove datas e intervalos ANTES de processar
       entradaRaw = removerDatasIntervalos(entradaRaw);
 
-      // Remove tudo depois do ":" (inclusive)
-      // Pra ignorar os intervalos depois dos resultados
       entradaRaw = entradaRaw.replace(/:.*/g, '');
 
       let entrada = separarNumerosLetras(entradaRaw);
@@ -145,7 +139,6 @@
         const match = entradaRaw.match(comp.regex);
         if (match) {
           mapa[comp.nome] = match[2] || match[1];
-          // Remove do texto para não interferir depois
           entradaRaw = entradaRaw.replace(comp.regex, '');
         }
       });
@@ -156,7 +149,6 @@
         let sigla = normalizar(palavraLimpa);
 
         if (!sigla) {
-          // Verifica se token tem formato sigla+valor junto tipo "hb12.3"
           const regex = /^([a-zA-Z]+)([\d.,%]+)$/;
           const res = palavra.match(regex);
           if (res) {
@@ -170,15 +162,13 @@
         }
 
         if (!mapa[sigla]) {
-          // tenta pegar valor antes da sigla
           let valor = null;
           if (i > 0) {
             valor = extrairValor(palavrasRaw[i - 1]);
           }
-          // se não achar, tenta depois
           if (!valor) {
             valor = extrairValor(palavrasRaw[i + 1]);
-            if (valor) i++; // pula para não repetir valor
+            if (valor) i++;
           }
           if (valor) {
             mapa[sigla] = valor;
@@ -205,9 +195,8 @@
     }
   </script>
 
- 
-
-
-
+  <div class="footer-credit">by chatGPT e Leo.SS</div>
+</body>
+</html>
 
 
